@@ -1,0 +1,7 @@
+﻿SELECT	
+    sum(l_extendedprice * l_discount) as revenue
+FROM 		
+    lineitem
+WHERE 
+    l_discount between 0.04 - 0.01 and 0.04 + 0.01 and
+    l_quantity < 25

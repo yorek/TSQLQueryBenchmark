@@ -1,0 +1,13 @@
+﻿Idee;
+
+Usare JSON per il commandfile
+
+Implementare anche il comando "Compress"
+
+Fare in modo che i comandi siano dei Plugin
+
+Monitorare anche l'utilizzo della CPU tramite performance counters 
+
+Monitorare anche l'utilizzo dell I/O tramite performance counters
+
+Usare NLOG per loggare e/o scrivere direttamente su SQL/CSV

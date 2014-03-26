@@ -1,0 +1,47 @@
+﻿// CONFIGURE
+
+Command=ConnectionString;Data Source=localhost;Integrated Security=SSPI;Initial Catalog=TPC_H_2_14_3_1GB
+
+// MCR
+
+Command=Query;Test=MCR;Query=Base;Cycle=5;MAXDOP=32;
+Command=Query;Test=MCR;Query=Base;Cycle=5;MAXDOP=16;
+Command=Query;Test=MCR;Query=Base;Cycle=5;MAXDOP=8;
+Command=Query;Test=MCR;Query=Base;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=MCR;Query=Simple;Cycle=5;MAXDOP=32;
+Command=Query;Test=MCR;Query=Simple;Cycle=5;MAXDOP=16;
+Command=Query;Test=MCR;Query=Simple;Cycle=5;MAXDOP=8;
+Command=Query;Test=MCR;Query=Simple;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=MCR;Query=Average;Cycle=5;MAXDOP=32;
+Command=Query;Test=MCR;Query=Average;Cycle=5;MAXDOP=16;
+Command=Query;Test=MCR;Query=Average;Cycle=5;MAXDOP=8;
+Command=Query;Test=MCR;Query=Average;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=MCR;Query=Complex;Cycle=5;MAXDOP=32;
+Command=Query;Test=MCR;Query=Complex;Cycle=5;MAXDOP=16;
+Command=Query;Test=MCR;Query=Complex;Cycle=5;MAXDOP=8;
+Command=Query;Test=MCR;Query=Complex;Cycle=5;MAXDOP=4;
+
+// BCR
+
+Command=Query;Test=BCR;Query=Base;Cycle=5;MAXDOP=32;
+Command=Query;Test=BCR;Query=Base;Cycle=5;MAXDOP=16;
+Command=Query;Test=BCR;Query=Base;Cycle=5;MAXDOP=8;
+Command=Query;Test=BCR;Query=Base;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=BCR;Query=Simple;Cycle=5;MAXDOP=32;
+Command=Query;Test=BCR;Query=Simple;Cycle=5;MAXDOP=16;
+Command=Query;Test=BCR;Query=Simple;Cycle=5;MAXDOP=8;
+Command=Query;Test=BCR;Query=Simple;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=BCR;Query=Average;Cycle=5;MAXDOP=32;
+Command=Query;Test=BCR;Query=Average;Cycle=5;MAXDOP=16;
+Command=Query;Test=BCR;Query=Average;Cycle=5;MAXDOP=8;
+Command=Query;Test=BCR;Query=Average;Cycle=5;MAXDOP=4;
+
+Command=Query;Test=BCR;Query=Complex;Cycle=5;MAXDOP=32;
+Command=Query;Test=BCR;Query=Complex;Cycle=5;MAXDOP=16;
+Command=Query;Test=BCR;Query=Complex;Cycle=5;MAXDOP=8;
+Command=Query;Test=BCR;Query=Complex;Cycle=5;MAXDOP=4;

@@ -1,0 +1,4 @@
+﻿SELECT 
+	max(L_LINENUMBER) 
+FROM 
+	lineitem
