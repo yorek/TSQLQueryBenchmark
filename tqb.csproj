@@ -1,0 +1,45 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+	<Title>T-SQL Query Benchmark</Title>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>    
+    <LangVersion>latest</LangVersion>
+    <Version>0.0.0.2</Version>
+    <Authors>Davide Mauri</Authors>
+    <Product>T-SQL Query Benchmark</Product>
+    <PackageId>TSQLQueryBenchmark</PackageId>
+    <AssemblyVersion>0.0.0.2</AssemblyVersion>
+    <FileVersion>0.0.0.2</FileVersion>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Description>Easily run benchmark performance test on SQL Server or Azure SQL</Description>
+    <Copyright>Davide Mauri</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/yorek/TSQLQueryBenchmark</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yorek/TSQLQueryBenchmark</RepositoryUrl>
+	  <RepositoryType>Git</RepositoryType>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="CommandFile.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="queries\Average.qry">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="queries\Base.qry">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="queries\Complex.qry">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="queries\Simple.qry">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  
+</Project>

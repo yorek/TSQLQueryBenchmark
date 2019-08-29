@@ -15,10 +15,11 @@ namespace FTTS
         public int PhysicalReads { get; set; }
         public int ReadAheadReads { get; set; }
         public int ElapsedMs { get; set; }
+        public int CpuMs { get; set; }
 
         public override string ToString()
         {
-            return string.Format("Logical Reads:{0}, Physical Reads:{1}, Read-Ahead Reads:{2}, Elapsed Msec:{3}", LogicalReads, PhysicalReads, ReadAheadReads, ElapsedMs);
+            return string.Format("Logical Reads:{0}, Physical Reads:{1}, Read-Ahead Reads:{2}, CpuMs Msec:{3}, Elapsed Msec:{4}", LogicalReads, PhysicalReads, ReadAheadReads, CpuMs, ElapsedMs);
         }
     }
 
@@ -35,7 +36,7 @@ namespace FTTS
             string commandFile = "CommandFile.txt";
 
             Console.WriteLine("T-SQL Query Benchmark");
-            Console.WriteLine("(c) Davide Mauri 2013");
+            Console.WriteLine("(c) Davide Mauri 2019");
             Console.WriteLine("Beta Version, Use at your own risk!");
             Console.WriteLine("Version: " + Assembly.GetExecutingAssembly().GetName().Version.ToString());            
 
@@ -64,14 +65,13 @@ namespace FTTS
             }
             Console.WriteLine("Done.");
 
-            StreamWriter sw = File.CreateText(string.Format("TQB-TestResult-{0:yyyyMMddHHmm}.txt", DateTime.Now));
-            sw.WriteLine("Type, Test, Maxdop, TestNum, TestMaxNum, LogicalReads, Physical, ReadAhead, ElapsedMs");            
+            StreamWriter sw = null;
 
             foreach (string commandLine in commandLines)
             {
                 Dictionary<string, string> command = DecodeCommandLine(commandLine);
 
-                if (command["command"] == "connectionstring")
+                if (command["command"].ToLower() == "connectionstring")
                 {
                     foreach (KeyValuePair<string, string> kvp in command)
                     {
@@ -79,7 +79,8 @@ namespace FTTS
                     }
 
                     Console.Write("Testing connection string...");
-                    SqlConnection connTest = new SqlConnection(connectionString);
+                    SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(connectionString);
+                    SqlConnection connTest = new SqlConnection(builder.ConnectionString);
                     try
                     {
                         connTest.Open();
@@ -96,24 +97,28 @@ namespace FTTS
                         connTest.Close();
                     }
                     Console.WriteLine("Done.");
+
+                    Console.WriteLine("Initializing output file...");
+                    sw = File.CreateText(string.Format("TQB-TestResult-{0}-{1:yyyyMMddHHmm}.txt", builder.InitialCatalog, DateTime.Now));
+                    sw.WriteLine("Type, Test, Maxdop, TestNum, TestMaxNum, LogicalReads, Physical, ReadAhead, CpuMs, ElapsedMs");            
                 }
 
-                if (command["command"] == "query")
+                if (command["command"].ToLower() == "query")
                 {
-                    string test = command["test"];
-                    string type = command["query"];
+                    string test = command["test"].ToLower();
+                    string type = command["query"].ToLower();
                     string query = LoadQuery(type);
-                    int cycle =  Convert.ToInt32(command["cycle"]);
-                    int maxdop = Convert.ToInt32(command["maxdop"]);
+                    int cycle =  Convert.ToInt32(command["cycle"].ToLower());
+                    int maxdop = Convert.ToInt32(command["maxdop"].ToLower());
 
                     for (int c = 1; c <= cycle; c++)
                     {
                         //Console.Write("{0}, {1}, {2}, {3}, {4}, ", type, test, maxdop, c, cycle);
                         Console.Write("Executing \"{0}\" test, {1} out of {2}, with \"{3}\" query and {4} maxdop...", test, c, cycle, type, maxdop);
                         QueryStats result = ExecuteTestQuery(test, connectionString, query, maxdop);
-                        Console.WriteLine("Done. [{0} Logical I/O, {1} ms]", result.LogicalReads, result.ElapsedMs);
+                        Console.WriteLine("Done. [{0} Logical I/O, {1}/{2} ms]", result.LogicalReads, result.CpuMs, result.ElapsedMs);
 
-                        sw.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}", type, test, maxdop, c, cycle, result.LogicalReads, result.PhysicalReads, result.ReadAheadReads, result.ElapsedMs);
+                        sw.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}", type, test, maxdop, c, cycle, result.LogicalReads, result.PhysicalReads, result.ReadAheadReads, result.CpuMs, result.ElapsedMs);
                         sw.Flush();
                     }
                 }               
@@ -136,12 +141,16 @@ namespace FTTS
             cmd.CommandText = "SET STATISTICS IO ON; SET STATISTICS TIME ON;";
             cmd.ExecuteNonQuery();
 
-            if (test == "bcr")
+            cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT SERVERPROPERTY('Edition') AS Edition";
+            var edition = (string)(cmd.ExecuteScalar());
+                        
+            if (test == "bcr" && edition != "SQL Azure")
             {
                 cmd.CommandText = "DBCC DROPCLEANBUFFERS;";
                 cmd.ExecuteNonQuery();
             }
-
+        
             messages.Clear();
             conn.InfoMessage += new SqlInfoMessageEventHandler(InfoMessageHandler);
 
@@ -151,8 +160,15 @@ namespace FTTS
 
             conn.Close();
 
-            Regex reIO = new Regex(@"(?:Table )'(?<TABLE>.*)'. (?:Scan count )(?<SCAN>\d*), (?:logical reads )(?<LOGICAL>\d*), (?:physical reads )(?<PHYSICAL>\d*), (?:read-ahead reads )(?<AHEAD>\d*)");
+            Regex reIO = null;
             Regex reTIME = new Regex(@"(?:CPU time = )(?<CPU>\d*).*(?:elapsed time = )(?<ELAPSED>\d*)");
+
+            if (edition != "SQL Azure")
+            {
+                reIO = new Regex(@"(?:Table )'(?<TABLE>.*)'. (?:Scan count )(?<SCAN>\d*), (?:logical reads )(?<LOGICAL>\d*), (?:physical reads )(?<PHYSICAL>\d*), (?:read-ahead reads )(?<AHEAD>\d*)");
+            } else {
+                reIO = new Regex(@"(?:Table )'(?<TABLE>.*)'. (?:Scan count )(?<SCAN>\d*), (?:logical reads )(?<LOGICAL>\d*), (?:physical reads )(?<PHYSICAL>\d*), (?:page server reads )(?<PAGESERVER>\d*), (?:read-ahead reads )(?<AHEAD>\d*)");
+            }
 
             bool ioStatFound = false;
 
@@ -163,10 +179,6 @@ namespace FTTS
                 {
                     if (mIO.Success)
                     {
-                        //foreach (string groupName in reIO.GetGroupNames())
-                        //{
-                        //    if (groupName != "0") Console.WriteLine("{0}: {1}", groupName, mIO.Groups[groupName]);                                             
-                        //}
                         result.LogicalReads += Convert.ToInt32(mIO.Groups["LOGICAL"].Value);
                         result.PhysicalReads += Convert.ToInt32(mIO.Groups["PHYSICAL"].Value);
                         result.ReadAheadReads += Convert.ToInt32(mIO.Groups["AHEAD"].Value);                        
@@ -181,10 +193,7 @@ namespace FTTS
                     {
                         if (mTIME.Success)
                         {
-                            //foreach (string groupName in reTIME.GetGroupNames())
-                            //{
-                            //    if (groupName != "0") Console.WriteLine("{0}: {1}", groupName, mTIME.Groups[groupName]);                            
-                            //}
+                            result.CpuMs += Convert.ToInt32(mTIME.Groups["CPU"].Value);
                             result.ElapsedMs += Convert.ToInt32(mTIME.Groups["ELAPSED"].Value);
                         }
                     }
@@ -196,7 +205,7 @@ namespace FTTS
 
         private static string LoadQuery(string queryFile)
         {
-            StreamReader sr = File.OpenText(queryFile + ".qry");
+            StreamReader sr = File.OpenText("queries/" + queryFile + ".qry");
             
             string query = sr.ReadToEnd();
             
@@ -278,7 +287,7 @@ namespace FTTS
                     string[] keyvalue = s.Split('=');
 
                     string commandName = keyvalue[0].Trim().ToLower();
-                    string commandValue = keyvalue[1].Trim().ToLower();
+                    string commandValue = keyvalue[1].Trim();
 
                     commands.Add(commandName, commandValue);
                 }
@@ -288,4 +297,5 @@ namespace FTTS
         }
     }
 }
+
 
