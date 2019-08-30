@@ -43,17 +43,17 @@ namespace FTTS
             switch (args.Length)
             {
                 case 0: break;
-                case 1: commandFile = args[1]; break;
+                case 1: commandFile = args[0]; break;
                 default:
                     Console.WriteLine("Unknown command line arguments. Use:");
-                    Console.WriteLine("TQB [command file]");
+                    Console.WriteLine("dotnet run -- [command file]");
                     return;
             }
 
             List<string> commandLines = new List<string>();
             try
             {
-                Console.Write("Loading command line...");
+                Console.Write($"Loading command file '{commandFile}'...");
                 commandLines = LoadCommandFile(commandFile);
             }
             catch (Exception e)
@@ -66,6 +66,9 @@ namespace FTTS
             Console.WriteLine("Done.");
 
             StreamWriter sw = null;
+            string dbEdition = string.Empty;
+            string slo = string.Empty;
+            string dbVersion = string.Empty;
 
             foreach (string commandLine in commandLines)
             {
@@ -98,9 +101,22 @@ namespace FTTS
                     }
                     Console.WriteLine("Done.");
 
+                    Console.WriteLine("Getting database info...");
+                    var cmd = connTest.CreateCommand();
+                    cmd.CommandText = "SELECT DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'Edition') AS [Database Edition], DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'ServiceObjective') AS [Service Objective], DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'Version') AS [Version]";
+                    connTest.Open();
+                    var reader = cmd.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        dbEdition = reader.GetString(0);
+                        slo = reader.GetString(1);
+                        dbVersion = (reader.GetInt32(2)).ToString();
+                    }               
+                    connTest.Close();     
+
                     Console.WriteLine("Initializing output file...");
                     sw = File.CreateText(string.Format("TQB-TestResult-{0}-{1:yyyyMMddHHmm}.txt", builder.InitialCatalog, DateTime.Now));
-                    sw.WriteLine("Type, Test, Maxdop, TestNum, TestMaxNum, LogicalReads, Physical, ReadAhead, CpuMs, ElapsedMs");            
+                    sw.WriteLine("Type, Test, Maxdop, TestNum, TestMaxNum, LogicalReads, Physical, ReadAhead, CpuMs, ElapsedMs, DBEdition, DBVersion, SLO");            
                 }
 
                 if (command["command"].ToLower() == "query")
@@ -111,6 +127,11 @@ namespace FTTS
                     int cycle =  Convert.ToInt32(command["cycle"].ToLower());
                     int maxdop = Convert.ToInt32(command["maxdop"].ToLower());
 
+                    if (test == "mcr") {
+                        Console.WriteLine("Warming up...");
+                        ExecuteWarmUpQuery(connectionString, query);
+                    }
+
                     for (int c = 1; c <= cycle; c++)
                     {
                         //Console.Write("{0}, {1}, {2}, {3}, {4}, ", type, test, maxdop, c, cycle);
@@ -118,7 +139,7 @@ namespace FTTS
                         QueryStats result = ExecuteTestQuery(test, connectionString, query, maxdop);
                         Console.WriteLine("Done. [{0} Logical I/O, {1}/{2} ms]", result.LogicalReads, result.CpuMs, result.ElapsedMs);
 
-                        sw.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}", type, test, maxdop, c, cycle, result.LogicalReads, result.PhysicalReads, result.ReadAheadReads, result.CpuMs, result.ElapsedMs);
+                        sw.WriteLine("{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}", type, test, maxdop, c, cycle, result.LogicalReads, result.PhysicalReads, result.ReadAheadReads, result.CpuMs, result.ElapsedMs, dbEdition, dbVersion, slo);
                         sw.Flush();
                     }
                 }               
@@ -128,6 +149,19 @@ namespace FTTS
             Console.WriteLine("Finished. Press any key to exit.");
 
             Console.ReadLine();
+        }
+
+        private static void ExecuteWarmUpQuery(string connectionString, string query)
+        {
+            SqlConnection conn = new SqlConnection(connectionString);
+            conn.Open();
+
+            SqlCommand cmd = conn.CreateCommand();
+            cmd.CommandText = query;
+            cmd.CommandTimeout = 60 * 60;
+            cmd.ExecuteNonQuery();        
+
+            conn.Close();
         }
 
         private static QueryStats ExecuteTestQuery(string test, string connectionString, string query, int maxdop)

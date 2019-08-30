@@ -219,4 +219,4 @@ todo.txt
 .vs/
 .vscode/
 TQB-TestResult*
-CommandFile.txt
+CommandFile-*.txt
