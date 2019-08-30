@@ -103,7 +103,7 @@ namespace FTTS
 
                     Console.WriteLine("Getting database info...");
                     var cmd = connTest.CreateCommand();
-                    cmd.CommandText = "SELECT DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'Edition') AS [Database Edition], DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'ServiceObjective') AS [Service Objective], DATABASEPROPERTYEX (DB_NAME(DB_ID()), 'Version') AS [Version]";
+                    cmd.CommandText = "SELECT ISNULL(DATABASEPROPERTYEX(DB_NAME(DB_ID()), 'Edition'),'') AS [Database Edition], ISNULL(DATABASEPROPERTYEX(DB_NAME(DB_ID()), 'ServiceObjective'), '') AS [Service Objective], DATABASEPROPERTYEX(DB_NAME(DB_ID()), 'Version') AS [Version]";
                     connTest.Open();
                     var reader = cmd.ExecuteReader();
                     while (reader.Read())
